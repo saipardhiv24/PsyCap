@@ -1,20 +1,31 @@
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { useParams } from "react-router-dom";
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
+import { useParams, Link } from "react-router-dom";
 import PageLayout from "../components/layout/PageLayout.jsx";
+import PriceChart from "../components/ui/PriceChart.jsx";
+import RangeSelector from "../components/ui/RangeSelector.jsx";
 import api from "../utils/api.js";
+import { useToast } from "../context/ToastContext.jsx";
+import {
+  Card,
+  Button,
+  DeltaPill,
+  Skeleton,
+  cx,
+} from "../components/ui/primitives.jsx";
+import { ChevronRightIcon } from "../components/ui/icons.jsx";
+import { formatCurrency, isPositive } from "../utils/format.js";
 
-const ranges = ["1D", "1W", "1M", "3M", "1Y"];
+const ranges = [
+  { value: "1D", label: "1D" },
+  { value: "1W", label: "1W" },
+  { value: "1M", label: "1M" },
+  { value: "3M", label: "3M" },
+  { value: "1Y", label: "1Y" },
+];
 
 export default function StockDetailPage() {
   const { symbol } = useParams();
+  const toast = useToast();
   const [quote, setQuote] = useState(null);
   const [history, setHistory] = useState([]);
   const [range, setRange] = useState("1M");
@@ -22,7 +33,6 @@ export default function StockDetailPage() {
   const [tradeType, setTradeType] = useState("buy");
   const [quantity, setQuantity] = useState(1);
   const [processingTrade, setProcessingTrade] = useState(false);
-  const [message, setMessage] = useState(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -56,12 +66,11 @@ export default function StockDetailPage() {
 
   async function handleTrade(e) {
     e?.preventDefault();
-    setMessage(null);
     if (!isValidQuantity(quantity)) {
-      setMessage({
-        type: "error",
-        text: "Enter a valid quantity (whole number >= 1).",
-      });
+      toast.error(
+        "Invalid quantity",
+        "Enter a whole number of 1 or more.",
+      );
       return;
     }
     setProcessingTrade(true);
@@ -78,17 +87,17 @@ export default function StockDetailPage() {
           quantity: Number(quantity),
         });
       }
-      setMessage({
-        type: "success",
-        text: `Successfully ${tradeType === "buy" ? "bought" : "sold"} ${quantity} ${symbol}.`,
-      });
+      toast.success(
+        `${tradeType === "buy" ? "Bought" : "Sold"} ${quantity} ${symbol}`,
+        `Order filled at ${formatCurrency(quote?.price)} per share.`,
+      );
       // refresh quote and history
       await loadData();
     } catch (err) {
       console.error(err);
       const text =
         err?.response?.data?.error || err?.message || "Trade failed.";
-      setMessage({ type: "error", text });
+      toast.error("Trade failed", text);
     } finally {
       setProcessingTrade(false);
     }
@@ -97,161 +106,174 @@ export default function StockDetailPage() {
   const chartData = useMemo(
     () =>
       history.map((item) => ({
-        time: item.datetime,
-        price: item.close,
+        label: item.datetime,
+        raw: item.datetime,
+        value: item.close,
       })),
     [history],
   );
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-slate-100">
-        Loading stock details…
-      </div>
-    );
-  }
+  const positive = isPositive(quote?.percent_change);
 
   return (
-    <PageLayout>
-      <div className="space-y-6">
-        <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h1 className="text-3xl font-semibold">{symbol}</h1>
-              <p className="mt-1 text-slate-400">
-                Live quote and historical price action
-              </p>
-            </div>
-            <div className="rounded-3xl bg-slate-950 px-5 py-4 text-right">
-              <div className="text-sm text-slate-400">Current Price</div>
-              <div className="text-3xl font-semibold text-slate-100">
-                ${quote?.price?.toFixed(2) ?? "--"}
-              </div>
-              <div
-                className={`mt-1 text-sm ${quote?.change >= 0 ? "text-emerald-400" : "text-rose-400"}`}
-              >
-                {quote?.percent_change?.toFixed(2)}%
-              </div>
-            </div>
-          </div>
-        </div>
+    <PageLayout title={symbol} subtitle="Live quote and price history">
+      <div className="space-y-6 animate-fade-in">
+        {/* Breadcrumb */}
+        <nav className="flex items-center gap-1 text-sm text-muted-foreground">
+          <Link to="/stocks" className="font-medium hover:text-foreground">
+            Markets
+          </Link>
+          <ChevronRightIcon className="h-4 w-4" />
+          <span className="font-semibold text-foreground">{symbol}</span>
+        </nav>
 
-        <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
-          <div className="flex items-center gap-3 text-slate-400">
-            {ranges.map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setRange(option)}
-                className={`rounded-2xl px-4 py-2 text-sm transition ${range === option ? "bg-slate-800 text-slate-100" : "bg-slate-950 text-slate-400 hover:bg-slate-900"}`}
-              >
-                {option}
-              </button>
-            ))}
-          </div>
-          <div className="mt-6 h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartData}>
-                <XAxis dataKey="time" hide />
-                <YAxis hide domain={["dataMin", "dataMax"]} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#0f172a",
-                    borderColor: "#334155",
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="price"
-                  stroke="#38bdf8"
-                  strokeWidth={3}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        {/* Quote header */}
+        <Card className="p-6 sm:p-8">
+          {loading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-12 w-40" />
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-muted text-sm font-bold text-foreground">
+                  {symbol.slice(0, 4)}
+                </div>
+                <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-foreground">
+                  {symbol}
+                </h2>
+              </div>
+              <div className="text-right">
+                <div className="text-sm font-medium text-muted-foreground">
+                  Current price
+                </div>
+                <div className="text-4xl font-extrabold tracking-tight text-foreground tabular">
+                  {quote?.price != null ? formatCurrency(quote.price) : "$--"}
+                </div>
+                {quote?.percent_change != null ? (
+                  <DeltaPill
+                    percent={quote.percent_change}
+                    className="mt-2"
+                  />
+                ) : null}
+              </div>
+            </div>
+          )}
+        </Card>
 
-        <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
-          <h2 className="text-lg font-semibold text-slate-100">Trade</h2>
-          <p className="mt-1 text-sm text-slate-400">
-            Buy or sell shares of {symbol}
+        {/* Chart */}
+        <Card className="p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className="text-base font-bold text-foreground">
+              Price history
+            </h3>
+            <RangeSelector
+              options={ranges}
+              value={range}
+              onChange={setRange}
+            />
+          </div>
+          <div className="mt-6">
+            {loading ? (
+              <Skeleton className="h-[280px] w-full rounded-xl" />
+            ) : (
+              <PriceChart data={chartData} positive={positive} />
+            )}
+          </div>
+        </Card>
+
+        {/* Trade panel */}
+        <Card className="p-6">
+          <h3 className="text-base font-bold text-foreground">Trade</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Buy or sell shares of {symbol} with virtual cash.
           </p>
 
-          <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-start">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setTradeType("buy")}
-                className={`rounded-full px-4 py-2 text-sm ${tradeType === "buy" ? "bg-emerald-600 text-white" : "bg-slate-950 text-slate-400 hover:bg-slate-900"}`}
+          {/* Buy / Sell toggle */}
+          <div className="mt-5 grid grid-cols-2 gap-2 rounded-xl border border-border bg-muted p-1">
+            <button
+              type="button"
+              onClick={() => setTradeType("buy")}
+              className={cx(
+                "h-10 rounded-lg text-sm font-bold transition",
+                tradeType === "buy"
+                  ? "bg-positive text-white shadow-card"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Buy
+            </button>
+            <button
+              type="button"
+              onClick={() => setTradeType("sell")}
+              className={cx(
+                "h-10 rounded-lg text-sm font-bold transition",
+                tradeType === "sell"
+                  ? "bg-negative text-white shadow-card"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              Sell
+            </button>
+          </div>
+
+          <form
+            onSubmit={handleTrade}
+            className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between"
+          >
+            <div className="flex-1">
+              <label
+                htmlFor="quantity"
+                className="text-sm font-medium text-muted-foreground"
               >
-                BUY
-              </button>
-              <button
-                type="button"
-                onClick={() => setTradeType("sell")}
-                className={`rounded-full px-4 py-2 text-sm ${tradeType === "sell" ? "bg-rose-600 text-white" : "bg-slate-950 text-slate-400 hover:bg-slate-900"}`}
-              >
-                SELL
-              </button>
+                Quantity
+              </label>
+              <input
+                id="quantity"
+                type="number"
+                min={1}
+                step={1}
+                value={quantity}
+                onChange={(e) =>
+                  setQuantity(
+                    e.target.value === "" ? "" : Number(e.target.value),
+                  )
+                }
+                className="mt-2 h-12 w-full max-w-[200px] rounded-xl border border-border bg-background px-4 text-base font-semibold text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 tabular"
+              />
+
+              <dl className="mt-4 space-y-1.5">
+                <div className="flex items-center gap-2 text-sm">
+                  <dt className="text-muted-foreground">Current price</dt>
+                  <dd className="font-semibold text-foreground tabular">
+                    {quote?.price != null ? formatCurrency(quote.price) : "$--"}
+                  </dd>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <dt className="text-muted-foreground">Estimated total</dt>
+                  <dd className="font-bold text-foreground tabular">
+                    {formatCurrency(estimatedValue)}
+                  </dd>
+                </div>
+              </dl>
             </div>
 
-            <form
-              onSubmit={handleTrade}
-              className="flex w-full flex-col gap-4 lg:flex-row lg:items-end lg:justify-between"
+            <Button
+              type="submit"
+              size="lg"
+              variant={tradeType === "buy" ? "positive" : "negative"}
+              disabled={processingTrade || !isValidQuantity(quantity)}
+              className="w-full lg:w-auto"
             >
-              <div className="flex flex-1 flex-col gap-2">
-                <label className="text-sm text-slate-400">Quantity</label>
-                <input
-                  type="number"
-                  min={1}
-                  step={1}
-                  value={quantity}
-                  onChange={(e) =>
-                    setQuantity(
-                      e.target.value === "" ? "" : Number(e.target.value),
-                    )
-                  }
-                  className="w-40 rounded-xl bg-slate-950 px-3 py-2 text-slate-100 shadow-sm"
-                />
-                <div className="mt-1 text-sm text-slate-400">
-                  Current Price:{" "}
-                  <span className="text-slate-100">
-                    ${quote?.price?.toFixed(2) ?? "--"}
-                  </span>
-                </div>
-                <div className="text-sm text-slate-400">
-                  Estimated Value:{" "}
-                  <span className="text-slate-100">
-                    ${estimatedValue ? estimatedValue.toFixed(2) : "0.00"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex flex-col items-start gap-2 lg:items-end">
-                {message && (
-                  <div
-                    className={`rounded-md px-3 py-2 text-sm ${message.type === "success" ? "bg-emerald-900 text-emerald-200" : "bg-rose-900 text-rose-200"}`}
-                  >
-                    {message.text}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={processingTrade || !isValidQuantity(quantity)}
-                  className={`mt-2 rounded-2xl px-6 py-2 text-sm font-semibold ${processingTrade || !isValidQuantity(quantity) ? "bg-slate-700 text-slate-400" : tradeType === "buy" ? "bg-emerald-500 text-slate-900" : "bg-rose-500 text-slate-900"}`}
-                >
-                  {processingTrade
-                    ? "Processing…"
-                    : tradeType === "buy"
-                      ? "Buy"
-                      : "Sell"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+              {processingTrade
+                ? "Processing…"
+                : tradeType === "buy"
+                  ? `Buy ${symbol}`
+                  : `Sell ${symbol}`}
+            </Button>
+          </form>
+        </Card>
       </div>
     </PageLayout>
   );
