@@ -1,12 +1,23 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import api from "../utils/api.js";
+import {
+  Card,
+  DeltaPill,
+  Skeleton,
+  EmptyState,
+  Button,
+} from "../components/ui/primitives.jsx";
+import { SearchIcon, StocksIcon, ChevronRightIcon } from "../components/ui/icons.jsx";
+import { formatCurrency } from "../utils/format.js";
 
 export default function StocksPage() {
   const [stocks, setStocks] = useState([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     async function loadStocks() {
@@ -24,6 +35,7 @@ export default function StocksPage() {
 
   async function handleSearch(event) {
     event.preventDefault();
+    setSearching(true);
     setLoading(true);
     try {
       const response = await api.get("/stocks/search", {
@@ -34,78 +46,116 @@ export default function StocksPage() {
       console.error(error);
     } finally {
       setLoading(false);
+      setSearching(false);
     }
   }
 
-  return (
-    <PageLayout>
-      <div className="space-y-6">
-        <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold">Stocks</h1>
-              <p className="mt-1 text-slate-400">
-                Browse US stocks and open a detail page to buy or sell.
-              </p>
-            </div>
-            <form
-              onSubmit={handleSearch}
-              className="flex w-full gap-2 md:w-auto"
-            >
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search symbol or name"
-                className="w-full rounded-2xl border border-slate-800 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-sky-500"
-              />
-              <button
-                type="submit"
-                className="rounded-2xl bg-sky-500 px-5 py-3 text-sm font-semibold text-slate-950"
-              >
-                Search
-              </button>
-            </form>
-          </div>
-        </div>
+  async function handleReset() {
+    setQuery("");
+    setLoading(true);
+    try {
+      const response = await api.get("/stocks");
+      setStocks(response.data.data.stocks);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+    inputRef.current?.focus();
+  }
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {loading ? (
-            <div className="col-span-full rounded-3xl border border-slate-800 bg-slate-900 p-6 text-center text-slate-400">
-              Loading stocks…
-            </div>
-          ) : stocks.length ? (
-            stocks.map((stock) => (
-              <Link
-                key={stock.symbol}
-                to={`/stocks/${stock.symbol}`}
-                className="rounded-3xl border border-slate-800 bg-slate-900 p-6 transition hover:border-slate-700"
+  return (
+    <PageLayout
+      title="Markets"
+      subtitle="Browse US stocks and open one to trade"
+    >
+      <div className="space-y-6 animate-fade-in">
+        <form
+          onSubmit={handleSearch}
+          className="flex flex-col gap-3 sm:flex-row sm:items-center"
+        >
+          <div className="relative flex-1">
+            <SearchIcon className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+            <input
+              ref={inputRef}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search by symbol or company name"
+              className="h-12 w-full rounded-xl border border-border bg-card pl-11 pr-4 text-sm font-medium text-foreground outline-none transition placeholder:text-muted-foreground focus:border-primary focus:ring-2 focus:ring-primary/20"
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button type="submit" size="md" disabled={searching}>
+              {searching ? "Searching…" : "Search"}
+            </Button>
+            {query ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="md"
+                onClick={handleReset}
               >
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <div className="text-slate-400 text-sm">{stock.name}</div>
-                    <div className="text-lg font-semibold text-slate-100">
-                      {stock.symbol}
+                Reset
+              </Button>
+            ) : null}
+          </div>
+        </form>
+
+        {loading ? (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 rounded-2xl" />
+            ))}
+          </div>
+        ) : stocks.length ? (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {stocks.map((stock) => (
+              <Link key={stock.symbol} to={`/stocks/${stock.symbol}`}>
+                <Card className="group h-full p-5 transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-card-hover">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-muted text-xs font-bold text-foreground">
+                        {stock.symbol.slice(0, 4)}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-foreground group-hover:text-primary">
+                          {stock.symbol}
+                        </div>
+                        <div className="truncate text-xs text-muted-foreground">
+                          {stock.name}
+                        </div>
+                      </div>
                     </div>
+                    <ChevronRightIcon className="h-5 w-5 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-primary" />
                   </div>
-                  <div className="text-right">
-                    <div className="text-slate-100">
-                      ${stock.quote?.price?.toFixed(2) ?? "--"}
+                  <div className="mt-4 flex items-end justify-between">
+                    <div className="text-xl font-bold text-foreground tabular">
+                      {stock.quote?.price != null
+                        ? formatCurrency(stock.quote.price)
+                        : "$--"}
                     </div>
-                    <div
-                      className={`text-sm ${stock.quote?.percent_change >= 0 ? "text-emerald-400" : "text-rose-400"}`}
-                    >
-                      {stock.quote?.percent_change?.toFixed(2)}%
-                    </div>
+                    {stock.quote?.percent_change != null ? (
+                      <DeltaPill percent={stock.quote.percent_change} />
+                    ) : null}
                   </div>
-                </div>
+                </Card>
               </Link>
-            ))
-          ) : (
-            <div className="col-span-full rounded-3xl border border-slate-800 bg-slate-900 p-6 text-slate-400">
-              No stocks found. Try a different symbol or company name.
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            icon={StocksIcon}
+            title="No stocks found"
+            description="Try a different symbol or company name."
+            action={
+              query ? (
+                <Button variant="outline" onClick={handleReset}>
+                  Clear search
+                </Button>
+              ) : null
+            }
+          />
+        )}
       </div>
     </PageLayout>
   );

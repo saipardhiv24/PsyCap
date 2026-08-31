@@ -1,10 +1,33 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import api from "../utils/api.js";
+import {
+  Card,
+  Badge,
+  DeltaPill,
+  Skeleton,
+  EmptyState,
+  cx,
+} from "../components/ui/primitives.jsx";
+import {
+  WalletIcon,
+  PortfolioIcon,
+  TransactionsIcon,
+  ChevronRightIcon,
+  ArrowUpIcon,
+  ArrowDownIcon,
+} from "../components/ui/icons.jsx";
+import {
+  formatCurrency,
+  formatSignedCurrency,
+  formatPercent,
+  formatDate,
+  isPositive,
+} from "../utils/format.js";
 
 export default function DashboardPage() {
   const [portfolio, setPortfolio] = useState(null);
-  const [watchlist, setWatchlist] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [stocks, setStocks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +44,8 @@ export default function DashboardPage() {
           ]);
         setPortfolio(portfolioRes.data.data.portfolio);
         setStocks(stocksRes.data.data.stocks.slice(0, 6));
-        setWatchlist(watchlistRes.data.data.watchlist);
+        // Watchlist is still fetched to keep the request contract intact.
+        void watchlistRes.data.data.watchlist;
         setTransactions(transactionsRes.data.data.transactions.slice(0, 5));
       } catch (error) {
         console.error(error);
@@ -32,135 +56,240 @@ export default function DashboardPage() {
     loadData();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center text-slate-100">
-        Loading dashboard…
-      </div>
-    );
-  }
+  const plPositive = isPositive(portfolio?.total_pl);
 
   return (
-    <PageLayout>
-      <div className="space-y-6">
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
-            <div className="text-sm uppercase text-slate-500">
-              Available Cash
-            </div>
-            <div className="mt-3 text-3xl font-semibold text-slate-100">
-              ${portfolio?.cash_balance.toFixed(2)}
-            </div>
-          </div>
-          <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
-            <div className="text-sm uppercase text-slate-500">
-              Portfolio Value
-            </div>
-            <div className="mt-3 text-3xl font-semibold text-slate-100">
-              ${portfolio?.portfolio_value.toFixed(2)}
-            </div>
-          </div>
-          <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
-            <div className="text-sm uppercase text-slate-500">
-              Total Account Value
-            </div>
-            <div className="mt-3 text-3xl font-semibold text-slate-100">
-              ${portfolio?.account_value.toFixed(2)}
-            </div>
-          </div>
-        </div>
+    <PageLayout
+      title="Dashboard"
+      subtitle="Your virtual portfolio at a glance"
+    >
+      {loading ? (
+        <DashboardSkeleton />
+      ) : (
+        <div className="space-y-6 animate-fade-in">
+          {/* Hero — total account value */}
+          <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+            <Card className="relative overflow-hidden p-6 sm:p-8">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">
+                  Total account value
+                </span>
+                <Badge tone={plPositive ? "positive" : "negative"}>
+                  {plPositive ? (
+                    <ArrowUpIcon className="h-3 w-3" />
+                  ) : (
+                    <ArrowDownIcon className="h-3 w-3" />
+                  )}
+                  {formatPercent(portfolio?.return_percent, { withSign: true })}
+                </Badge>
+              </div>
+              <div className="mt-3 text-4xl font-extrabold tracking-tight text-foreground tabular sm:text-5xl">
+                {formatCurrency(portfolio?.account_value)}
+              </div>
+              <div
+                className={cx(
+                  "mt-2 text-sm font-semibold tabular",
+                  plPositive ? "text-positive" : "text-negative",
+                )}
+              >
+                {formatSignedCurrency(portfolio?.total_pl)} all-time
+              </div>
 
-        <div className="grid gap-4 lg:grid-cols-3">
-          <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
-            <div className="text-sm uppercase text-slate-500">Total P/L</div>
-            <div className="mt-3 text-3xl font-semibold text-emerald-400">
-              ${portfolio?.total_pl.toFixed(2)}
-            </div>
-          </div>
-          <div className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
-            <div className="text-sm uppercase text-slate-500">Return %</div>
-            <div className="mt-3 text-3xl font-semibold text-emerald-400">
-              {portfolio?.return_percent.toFixed(2)}%
-            </div>
-          </div>
-        </div>
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                <MiniStat
+                  label="Available cash"
+                  value={formatCurrency(portfolio?.cash_balance)}
+                  icon={WalletIcon}
+                />
+                <MiniStat
+                  label="Invested value"
+                  value={formatCurrency(portfolio?.portfolio_value)}
+                  icon={PortfolioIcon}
+                />
+              </div>
+            </Card>
 
-        <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
-          <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Market overview</h2>
-              <span className="text-sm text-slate-400">
-                Live prices via Twelve Data
-              </span>
-            </div>
-            <div className="mt-6 space-y-3">
-              {stocks.map((stock) => (
-                <div
-                  key={stock.symbol}
-                  className="grid grid-cols-[auto_1fr_auto] items-center gap-4 rounded-2xl border border-slate-800 bg-slate-950 p-4"
+            {/* Quick actions */}
+            <Card className="flex flex-col justify-between p-6">
+              <div>
+                <h2 className="text-base font-bold text-foreground">
+                  Quick actions
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Jump back into the market.
+                </p>
+              </div>
+              <div className="mt-4 space-y-2">
+                <QuickLink to="/stocks" label="Browse markets" />
+                <QuickLink to="/portfolio" label="View holdings" />
+                <QuickLink to="/leaderboard" label="See leaderboard" />
+              </div>
+            </Card>
+          </div>
+
+          {/* Market overview + recent activity */}
+          <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold text-foreground">
+                  Market overview
+                </h2>
+                <Link
+                  to="/stocks"
+                  className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
                 >
-                  <div>
-                    <div className="text-sm text-slate-400">{stock.symbol}</div>
-                    <div className="font-semibold text-slate-100">
-                      {stock.name}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-slate-100">
-                      ${stock.quote?.price?.toFixed(2) ?? "--"}
-                    </div>
-                    <div
-                      className={`text-sm ${stock.quote?.change >= 0 ? "text-emerald-400" : "text-rose-400"}`}
-                    >
-                      {stock.quote?.percent_change?.toFixed(2)}%
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="rounded-3xl border border-slate-800 bg-slate-900 p-6">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Recent transactions</h2>
-            </div>
-            <div className="mt-6 space-y-3">
-              {transactions.length ? (
-                transactions.map((txn) => (
-                  <div
-                    key={txn.id}
-                    className="rounded-2xl border border-slate-800 bg-slate-950 p-4"
+                  All markets
+                  <ChevronRightIcon className="h-4 w-4" />
+                </Link>
+              </div>
+              <div className="mt-4 divide-y divide-border">
+                {stocks.map((stock) => (
+                  <Link
+                    key={stock.symbol}
+                    to={`/stocks/${stock.symbol}`}
+                    className="group flex items-center gap-4 py-3 transition"
                   >
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="text-sm text-slate-400">
-                          {txn.symbol}
-                        </div>
-                        <div className="font-semibold text-slate-100">
-                          {txn.transaction_type}
-                        </div>
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-xs font-bold text-foreground">
+                      {stock.symbol.slice(0, 4)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-semibold text-foreground group-hover:text-primary">
+                        {stock.symbol}
                       </div>
-                      <div className="text-right text-slate-300">
-                        ${Number(txn.total_value).toFixed(2)}
+                      <div className="truncate text-xs text-muted-foreground">
+                        {stock.name}
                       </div>
                     </div>
-                    <div className="mt-2 flex items-center justify-between text-sm text-slate-400">
-                      <span>
-                        {new Date(txn.created_at).toLocaleDateString()}
-                      </span>
-                      <span>{txn.quantity} shares</span>
+                    <div className="text-right">
+                      <div className="font-semibold text-foreground tabular">
+                        {stock.quote?.price != null
+                          ? formatCurrency(stock.quote.price)
+                          : "$--"}
+                      </div>
+                      {stock.quote?.percent_change != null ? (
+                        <DeltaPill
+                          percent={stock.quote.percent_change}
+                          size="sm"
+                          className="mt-0.5"
+                        />
+                      ) : null}
                     </div>
+                  </Link>
+                ))}
+              </div>
+            </Card>
+
+            <Card className="p-6">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-bold text-foreground">
+                  Recent activity
+                </h2>
+                <Link
+                  to="/transactions"
+                  className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
+                >
+                  All
+                  <ChevronRightIcon className="h-4 w-4" />
+                </Link>
+              </div>
+              <div className="mt-4">
+                {transactions.length ? (
+                  <div className="divide-y divide-border">
+                    {transactions.map((txn) => {
+                      const isBuy =
+                        String(txn.transaction_type).toLowerCase() === "buy";
+                      return (
+                        <div
+                          key={txn.id}
+                          className="flex items-center gap-3 py-3"
+                        >
+                          <span
+                            className={cx(
+                              "flex h-9 w-9 shrink-0 items-center justify-center rounded-full",
+                              isBuy
+                                ? "bg-positive-muted text-positive"
+                                : "bg-negative-muted text-negative",
+                            )}
+                          >
+                            {isBuy ? (
+                              <ArrowDownIcon className="h-4 w-4" />
+                            ) : (
+                              <ArrowUpIcon className="h-4 w-4" />
+                            )}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-foreground">
+                                {txn.symbol}
+                              </span>
+                              <span className="text-xs font-medium uppercase text-muted-foreground">
+                                {txn.transaction_type}
+                              </span>
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {txn.quantity} shares · {formatDate(txn.created_at)}
+                            </div>
+                          </div>
+                          <div className="text-right font-semibold text-foreground tabular">
+                            {formatCurrency(txn.total_value)}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                ))
-              ) : (
-                <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950 p-6 text-slate-400">
-                  No transactions yet. Buy a stock to start trading.
-                </div>
-              )}
-            </div>
-          </section>
+                ) : (
+                  <EmptyState
+                    icon={TransactionsIcon}
+                    title="No transactions yet"
+                    description="Buy a stock to start trading and it will show up here."
+                  />
+                )}
+              </div>
+            </Card>
+          </div>
         </div>
-      </div>
+      )}
     </PageLayout>
+  );
+}
+
+function MiniStat({ label, value, icon: Icon }) {
+  return (
+    <div className="rounded-xl border border-border bg-background/60 p-4">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        <Icon className="h-4 w-4" />
+        <span className="text-xs font-medium">{label}</span>
+      </div>
+      <div className="mt-2 text-lg font-bold text-foreground tabular">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function QuickLink({ to, label }) {
+  return (
+    <Link
+      to={to}
+      className="flex items-center justify-between rounded-xl border border-border bg-background/60 px-4 py-3 text-sm font-semibold text-foreground transition hover:border-primary hover:text-primary"
+    >
+      {label}
+      <ChevronRightIcon className="h-4 w-4" />
+    </Link>
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
+        <Skeleton className="h-64 rounded-2xl" />
+        <Skeleton className="h-64 rounded-2xl" />
+      </div>
+      <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
+        <Skeleton className="h-80 rounded-2xl" />
+        <Skeleton className="h-80 rounded-2xl" />
+      </div>
+    </div>
   );
 }
