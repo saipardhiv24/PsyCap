@@ -33,6 +33,7 @@ export default function StockDetailPage() {
   const [tradeType, setTradeType] = useState("buy");
   const [quantity, setQuantity] = useState(1);
   const [processingTrade, setProcessingTrade] = useState(false);
+  const [tradeError, setTradeError] = useState(null);
   const [loadError, setLoadError] = useState(null);
 
 
