@@ -32,7 +32,9 @@ export default function StockDetailPage() {
   const [loading, setLoading] = useState(true);
   const [tradeType, setTradeType] = useState("buy");
   const [quantity, setQuantity] = useState(1);
-  const [tradeError, setTradeError] = useState(null);
+  const [processingTrade, setProcessingTrade] = useState(false);
+  const [loadError, setLoadError] = useState(null);
+
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -45,6 +47,7 @@ export default function StockDetailPage() {
       setHistory(historyRes.data.data.history);
     } catch (error) {
       console.error(error);
+      setLoadError(error);
     } finally {
       setLoading(false);
     }
@@ -163,6 +166,12 @@ export default function StockDetailPage() {
 
   return (
     <PageLayout title={symbol} subtitle="Live quote and price history">
+          {loadError && (
+            <div className="text-center py-10 text-muted-foreground">
+              Failed to load stock data. Please try again.
+            </div>
+          )}
+
       <div className="space-y-6 animate-fade-in">
         {/* Breadcrumb */}
         <nav className="flex items-center gap-1 text-sm text-muted-foreground">
