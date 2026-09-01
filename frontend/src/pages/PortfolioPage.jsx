@@ -2,20 +2,20 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import PageLayout from "../components/layout/PageLayout.jsx";
 import api from "../utils/api.js";
-import { Card, Delta, EmptyState, Skeleton } from "../components/ui/primitives.jsx";
-import { WalletIcon } from "../components/ui/icons.jsx";
+import { Card, DeltaPill, EmptyState, Skeleton } from "../components/ui/primitives.jsx";
+import { WalletIcon, ArrowUpIcon, ArrowDownIcon } from "../components/ui/icons.jsx";
 import { formatCurrency, formatNumber, formatPercent } from "../utils/format.js";
 
 function StatTile({ label, value, accent }) {
   return (
-    <div className="rounded-xl border border-border bg-muted/40 p-4">
+    <div className="rounded-xl border border-border bg-card/60 p-4">
       <div className="text-xs font-medium text-muted-foreground">{label}</div>
       <div
-        className={`mt-2 text-lg font-semibold tabular-nums ${
+        className={`mt-2 text-lg font-bold tabular ${
           accent === "up"
-            ? "text-success"
+            ? "text-positive"
             : accent === "down"
-              ? "text-danger"
+              ? "text-negative"
               : "text-foreground"
         }`}
       >
@@ -46,50 +46,45 @@ export default function PortfolioPage() {
   const holdings = portfolio?.holdings ?? [];
 
   return (
-    <PageLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Portfolio
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Track your positions, portfolio value, and returns.
-          </p>
-        </div>
-
+    <PageLayout
+      title="Portfolio"
+      subtitle="Track your positions, portfolio value, and returns"
+    >
+      <div className="space-y-6 animate-fade-in">
         {loading ? (
-          <>
-            <Skeleton className="h-40 w-full rounded-2xl" />
-            <Skeleton className="h-72 w-full rounded-2xl" />
-          </>
+          <div className="space-y-6">
+            <Skeleton className="h-44 w-full rounded-2xl" />
+            <Skeleton className="h-80 w-full rounded-2xl" />
+          </div>
         ) : !portfolio ? (
-          <Card>
+          <Card className="p-8">
             <EmptyState
-              icon={<WalletIcon className="h-6 w-6" />}
+              icon={WalletIcon}
               title="Couldn't load portfolio"
               description="Please refresh the page to try again."
             />
           </Card>
         ) : (
           <>
-            <Card className="p-5 sm:p-6">
-              <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+            {/* Account overview card */}
+            <Card className="p-6 sm:p-8">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <div className="text-sm font-medium text-muted-foreground">
-                    Account value
+                    Total Account Value
                   </div>
-                  <div className="mt-1 text-3xl font-semibold tabular-nums text-foreground">
+                  <div className="mt-1 text-3xl font-extrabold tracking-tight text-foreground tabular sm:text-4xl">
                     {formatCurrency(portfolio.account_value)}
                   </div>
                 </div>
-                <Delta
+                <DeltaPill
                   value={portfolio.total_pl}
                   percent={portfolio.return_percent}
-                  className="text-sm"
+                  size="md"
                 />
               </div>
 
-              <div className="mt-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
+              <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
                 <StatTile
                   label="Cash balance"
                   value={formatCurrency(portfolio.cash_balance)}
@@ -105,139 +100,167 @@ export default function PortfolioPage() {
                 />
                 <StatTile
                   label="Return"
-                  value={formatPercent(portfolio.return_percent)}
+                  value={formatPercent(portfolio.return_percent, { withSign: true })}
                   accent={portfolio.return_percent >= 0 ? "up" : "down"}
                 />
               </div>
             </Card>
 
+            {/* Holdings section */}
             <Card className="overflow-hidden p-0">
-              <div className="border-b border-border px-5 py-4 sm:px-6">
-                <h2 className="text-base font-semibold text-foreground">
-                  Holdings
-                </h2>
+              <div className="border-b border-border px-6 py-4 flex items-center justify-between">
+                <div>
+                  <h2 className="text-base font-bold text-foreground">
+                    Holdings
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    {holdings.length} position{holdings.length === 1 ? "" : "s"} open
+                  </p>
+                </div>
+                {holdings.length > 0 && (
+                  <Link
+                    to="/stocks"
+                    className="text-xs font-semibold text-primary hover:underline"
+                  >
+                    + Trade more stocks
+                  </Link>
+                )}
               </div>
 
               {holdings.length === 0 ? (
-                <EmptyState
-                  icon={<WalletIcon className="h-6 w-6" />}
-                  title="No holdings yet"
-                  description="Buy your first stock to start building your portfolio."
-                  action={
-                    <Link
-                      to="/stocks"
-                      className="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
-                    >
-                      Explore markets
-                    </Link>
-                  }
-                />
+                <div className="p-6">
+                  <EmptyState
+                    icon={WalletIcon}
+                    title="No holdings yet"
+                    description="Buy your first stock to start building your portfolio."
+                    action={
+                      <Link
+                        to="/stocks"
+                        className="inline-flex items-center rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-card transition hover:brightness-105"
+                      >
+                        Explore markets
+                      </Link>
+                    }
+                  />
+                </div>
               ) : (
                 <>
                   {/* Desktop table */}
                   <div className="hidden overflow-x-auto md:block">
                     <table className="w-full text-left text-sm">
                       <thead>
-                        <tr className="border-b border-border text-xs font-medium text-muted-foreground">
-                          <th className="px-6 py-3">Symbol</th>
-                          <th className="px-6 py-3 text-right">Shares</th>
-                          <th className="px-6 py-3 text-right">Avg buy</th>
-                          <th className="px-6 py-3 text-right">Current</th>
-                          <th className="px-6 py-3 text-right">Value</th>
-                          <th className="px-6 py-3 text-right">P/L</th>
+                        <tr className="border-b border-border bg-muted/30 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          <th className="px-6 py-3.5">Symbol</th>
+                          <th className="px-6 py-3.5 text-right">Shares</th>
+                          <th className="px-6 py-3.5 text-right">Avg buy</th>
+                          <th className="px-6 py-3.5 text-right">Current price</th>
+                          <th className="px-6 py-3.5 text-right">Market value</th>
+                          <th className="px-6 py-3.5 text-right">Unrealized P/L</th>
                         </tr>
                       </thead>
-                      <tbody>
-                        {holdings.map((holding) => (
-                          <tr
-                            key={holding.symbol}
-                            className="border-b border-border/60 transition last:border-0 hover:bg-muted/40"
-                          >
-                            <td className="px-6 py-4">
-                              <Link
-                                to={`/stocks/${holding.symbol}`}
-                                className="block"
-                              >
-                                <div className="font-semibold text-foreground">
-                                  {holding.symbol}
+                      <tbody className="divide-y divide-border">
+                        {holdings.map((holding) => {
+                          const plPos = holding.unrealized_pl >= 0;
+                          return (
+                            <tr
+                              key={holding.symbol}
+                              className="transition hover:bg-muted/40"
+                            >
+                              <td className="px-6 py-4">
+                                <Link
+                                  to={`/stocks/${holding.symbol}`}
+                                  className="group flex items-center gap-3"
+                                >
+                                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-muted text-xs font-bold text-foreground group-hover:bg-primary-muted group-hover:text-primary transition">
+                                    {holding.symbol.slice(0, 4)}
+                                  </div>
+                                  <div>
+                                    <div className="font-bold text-foreground group-hover:text-primary transition">
+                                      {holding.symbol}
+                                    </div>
+                                    <div className="max-w-[180px] truncate text-xs text-muted-foreground">
+                                      {holding.company_name}
+                                    </div>
+                                  </div>
+                                </Link>
+                              </td>
+                              <td className="px-6 py-4 text-right font-semibold tabular text-foreground">
+                                {formatNumber(holding.quantity)}
+                              </td>
+                              <td className="px-6 py-4 text-right font-semibold tabular text-foreground">
+                                {formatCurrency(holding.average_buy_price)}
+                              </td>
+                              <td className="px-6 py-4 text-right font-semibold tabular text-foreground">
+                                {formatCurrency(holding.current_price)}
+                              </td>
+                              <td className="px-6 py-4 text-right font-bold tabular text-foreground">
+                                {formatCurrency(holding.current_value)}
+                              </td>
+                              <td className="px-6 py-4 text-right">
+                                <div
+                                  className={`font-bold tabular ${
+                                    plPos ? "text-positive" : "text-negative"
+                                  }`}
+                                >
+                                  {formatCurrency(holding.unrealized_pl)}
                                 </div>
-                                <div className="max-w-[180px] truncate text-xs text-muted-foreground">
-                                  {holding.company_name}
+                                <div
+                                  className={`text-xs font-semibold tabular ${
+                                    plPos ? "text-positive" : "text-negative"
+                                  }`}
+                                >
+                                  {formatPercent(holding.unrealized_pl_percent, {
+                                    withSign: true,
+                                  })}
                                 </div>
-                              </Link>
-                            </td>
-                            <td className="px-6 py-4 text-right tabular-nums text-foreground">
-                              {formatNumber(holding.quantity)}
-                            </td>
-                            <td className="px-6 py-4 text-right tabular-nums text-foreground">
-                              {formatCurrency(holding.average_buy_price)}
-                            </td>
-                            <td className="px-6 py-4 text-right tabular-nums text-foreground">
-                              {formatCurrency(holding.current_price)}
-                            </td>
-                            <td className="px-6 py-4 text-right tabular-nums text-foreground">
-                              {formatCurrency(holding.current_value)}
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <div
-                                className={`font-semibold tabular-nums ${
-                                  holding.unrealized_pl >= 0
-                                    ? "text-success"
-                                    : "text-danger"
-                                }`}
-                              >
-                                {formatCurrency(holding.unrealized_pl)}
-                              </div>
-                              <div
-                                className={`text-xs tabular-nums ${
-                                  holding.unrealized_pl_percent >= 0
-                                    ? "text-success"
-                                    : "text-danger"
-                                }`}
-                              >
-                                {formatPercent(holding.unrealized_pl_percent)}
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
 
                   {/* Mobile cards */}
                   <div className="divide-y divide-border md:hidden">
-                    {holdings.map((holding) => (
-                      <Link
-                        key={holding.symbol}
-                        to={`/stocks/${holding.symbol}`}
-                        className="flex items-center justify-between gap-3 px-5 py-4 transition active:bg-muted/50"
-                      >
-                        <div className="min-w-0">
-                          <div className="font-semibold text-foreground">
-                            {holding.symbol}
+                    {holdings.map((holding) => {
+                      const plPos = holding.unrealized_pl >= 0;
+                      return (
+                        <Link
+                          key={holding.symbol}
+                          to={`/stocks/${holding.symbol}`}
+                          className="flex items-center justify-between gap-3 px-5 py-4 transition active:bg-muted/50"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-xs font-bold text-foreground">
+                              {holding.symbol.slice(0, 4)}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="font-bold text-foreground">
+                                {holding.symbol}
+                              </div>
+                              <div className="truncate text-xs text-muted-foreground">
+                                {formatNumber(holding.quantity)} shares ·{" "}
+                                {formatCurrency(holding.average_buy_price)} avg
+                              </div>
+                            </div>
                           </div>
-                          <div className="truncate text-xs text-muted-foreground">
-                            {formatNumber(holding.quantity)} shares ·{" "}
-                            {formatCurrency(holding.average_buy_price)} avg
+                          <div className="text-right shrink-0">
+                            <div className="font-bold tabular text-foreground">
+                              {formatCurrency(holding.current_value)}
+                            </div>
+                            <div
+                              className={`text-xs font-semibold tabular ${
+                                plPos ? "text-positive" : "text-negative"
+                              }`}
+                            >
+                              {formatCurrency(holding.unrealized_pl)} (
+                              {formatPercent(holding.unrealized_pl_percent, { withSign: true })})
+                            </div>
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-semibold tabular-nums text-foreground">
-                            {formatCurrency(holding.current_value)}
-                          </div>
-                          <div
-                            className={`text-xs tabular-nums ${
-                              holding.unrealized_pl >= 0
-                                ? "text-success"
-                                : "text-danger"
-                            }`}
-                          >
-                            {formatCurrency(holding.unrealized_pl)} (
-                            {formatPercent(holding.unrealized_pl_percent)})
-                          </div>
-                        </div>
-                      </Link>
-                    ))}
+                        </Link>
+                      );
+                    })}
                   </div>
                 </>
               )}

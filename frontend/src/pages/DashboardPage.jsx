@@ -69,7 +69,7 @@ export default function DashboardPage() {
         <div className="space-y-6 animate-fade-in">
           {/* Hero — total account value */}
           <div className="grid gap-6 lg:grid-cols-[1.5fr_1fr]">
-            <Card className="relative overflow-hidden p-6 sm:p-8">
+            <Card className="relative overflow-hidden p-6 sm:p-8 bg-gradient-to-br from-card via-card to-primary-muted/20 border-primary/30 shadow-pop">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-medium text-muted-foreground">
                   Total account value
@@ -120,6 +120,7 @@ export default function DashboardPage() {
                 </p>
               </div>
               <div className="mt-4 space-y-2">
+                <QuickLink to="/mentor" label="AI Mentor insights" />
                 <QuickLink to="/stocks" label="Browse markets" />
                 <QuickLink to="/portfolio" label="View holdings" />
                 <QuickLink to="/leaderboard" label="See leaderboard" />

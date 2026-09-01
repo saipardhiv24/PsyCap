@@ -42,23 +42,41 @@ export function AuthProvider({ children }) {
   }, [navigate]);
 
   async function signUp(email, password, username) {
-    const { data, error } = await supabase.auth.signUp(
-      { email, password },
-      { data: { username } },
-    );
-    if (error) throw error;
-    return data;
+    try {
+      const { data, error } = await supabase.auth.signUp(
+        { email, password },
+        { data: { username } },
+      );
+      if (error) throw error;
+      return data;
+    } catch (err) {
+      if (err.message === "Failed to fetch" || err.status === 0) {
+        throw new Error(
+          "Unable to connect to Supabase Auth service. Please check VITE_SUPABASE_URL in your .env file or your network connection.",
+        );
+      }
+      throw err;
+    }
   }
 
   async function signIn(email, password) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) throw error;
-    setUser(data.user);
-    setSession(data.session);
-    return data;
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+      setUser(data.user);
+      setSession(data.session);
+      return data;
+    } catch (err) {
+      if (err.message === "Failed to fetch" || err.status === 0) {
+        throw new Error(
+          "Unable to connect to Supabase Auth service. Please check VITE_SUPABASE_URL in your .env file or your network connection.",
+        );
+      }
+      throw err;
+    }
   }
 
   async function signOut() {

@@ -32,7 +32,7 @@ export default function StockDetailPage() {
   const [loading, setLoading] = useState(true);
   const [tradeType, setTradeType] = useState("buy");
   const [quantity, setQuantity] = useState(1);
-  const [processingTrade, setProcessingTrade] = useState(false);
+  const [tradeError, setTradeError] = useState(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -64,15 +64,27 @@ export default function StockDetailPage() {
       ? quote.price * Number(quantity)
       : 0;
 
+  const handleTradeTypeChange = (type) => {
+    setTradeType(type);
+    setTradeError(null);
+  };
+
+  const handleQuantityChange = (val) => {
+    setQuantity(val);
+    setTradeError(null);
+  };
+
   async function handleTrade(e) {
     e?.preventDefault();
+    setTradeError(null);
+
     if (!isValidQuantity(quantity)) {
-      toast.error(
-        "Invalid quantity",
-        "Enter a whole number of 1 or more.",
-      );
+      const msg = "Enter a whole number of 1 or more.";
+      setTradeError(msg);
+      toast.error("Invalid quantity", msg);
       return;
     }
+
     setProcessingTrade(true);
     try {
       if (tradeType === "buy") {
@@ -87,17 +99,46 @@ export default function StockDetailPage() {
           quantity: Number(quantity),
         });
       }
+
       toast.success(
         `${tradeType === "buy" ? "Bought" : "Sold"} ${quantity} ${symbol}`,
         `Order filled at ${formatCurrency(quote?.price)} per share.`,
       );
+      setTradeError(null);
       // refresh quote and history
       await loadData();
     } catch (err) {
-      console.error(err);
-      const text =
-        err?.response?.data?.error || err?.message || "Trade failed.";
-      toast.error("Trade failed", text);
+      console.error("Trade execution error:", err);
+
+      // Extract error string safely regardless of object format
+      let rawMessage = "";
+      if (typeof err?.response?.data?.error === "string") {
+        rawMessage = err.response.data.error;
+      } else if (err?.response?.data?.error?.message) {
+        rawMessage = err.response.data.error.message;
+      } else if (typeof err?.response?.data?.message === "string") {
+        rawMessage = err.response.data.message;
+      } else if (err?.message) {
+        rawMessage = err.message;
+      } else {
+        rawMessage = "Trade execution failed.";
+      }
+
+      // Format user-friendly error text while preserving backend rejection cause
+      let displayMessage = rawMessage;
+      if (/insufficient.*cash/i.test(rawMessage)) {
+        displayMessage =
+          "Insufficient funds. You don't have enough virtual cash for this trade.";
+      } else if (/insufficient.*shares/i.test(rawMessage)) {
+        displayMessage =
+          "Insufficient shares. You cannot sell more shares than you currently own.";
+      } else if (/no holdings/i.test(rawMessage)) {
+        displayMessage =
+          "Insufficient shares. You do not currently own any shares of this stock.";
+      }
+
+      setTradeError(displayMessage);
+      toast.error("Trade Failed", displayMessage);
     } finally {
       setProcessingTrade(false);
     }
@@ -109,6 +150,11 @@ export default function StockDetailPage() {
         label: item.datetime,
         raw: item.datetime,
         value: item.close,
+        open: item.open,
+        high: item.high,
+        low: item.low,
+        close: item.close,
+        volume: item.volume,
       })),
     [history],
   );
@@ -194,7 +240,7 @@ export default function StockDetailPage() {
           <div className="mt-5 grid grid-cols-2 gap-2 rounded-xl border border-border bg-muted p-1">
             <button
               type="button"
-              onClick={() => setTradeType("buy")}
+              onClick={() => handleTradeTypeChange("buy")}
               className={cx(
                 "h-10 rounded-lg text-sm font-bold transition",
                 tradeType === "buy"
@@ -206,7 +252,7 @@ export default function StockDetailPage() {
             </button>
             <button
               type="button"
-              onClick={() => setTradeType("sell")}
+              onClick={() => handleTradeTypeChange("sell")}
               className={cx(
                 "h-10 rounded-lg text-sm font-bold transition",
                 tradeType === "sell"
@@ -217,6 +263,19 @@ export default function StockDetailPage() {
               Sell
             </button>
           </div>
+
+          {tradeError && (
+            <div className="mt-4 rounded-xl bg-negative-muted border border-negative/30 p-3.5 text-xs font-semibold text-negative flex items-center justify-between animate-fade-in">
+              <span>{tradeError}</span>
+              <button
+                type="button"
+                onClick={() => setTradeError(null)}
+                className="ml-2 text-negative/70 hover:text-negative font-bold"
+              >
+                ✕
+              </button>
+            </div>
+          )}
 
           <form
             onSubmit={handleTrade}
@@ -229,19 +288,38 @@ export default function StockDetailPage() {
               >
                 Quantity
               </label>
-              <input
-                id="quantity"
-                type="number"
-                min={1}
-                step={1}
-                value={quantity}
-                onChange={(e) =>
-                  setQuantity(
-                    e.target.value === "" ? "" : Number(e.target.value),
-                  )
-                }
-                className="mt-2 h-12 w-full max-w-[200px] rounded-xl border border-border bg-background px-4 text-base font-semibold text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 tabular"
-              />
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <input
+                  id="quantity"
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={quantity}
+                  onChange={(e) =>
+                    handleQuantityChange(
+                      e.target.value === "" ? "" : Number(e.target.value),
+                    )
+                  }
+                  className="h-12 w-full max-w-[180px] rounded-xl border border-border bg-background px-4 text-base font-semibold text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 tabular"
+                />
+                <div className="flex items-center gap-1">
+                  {[1, 5, 10, 25, 50, 100].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => handleQuantityChange(preset)}
+                      className={cx(
+                        "h-9 px-2.5 rounded-lg text-xs font-bold transition border border-border",
+                        Number(quantity) === preset
+                          ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                          : "bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted",
+                      )}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               <dl className="mt-4 space-y-1.5">
                 <div className="flex items-center gap-2 text-sm">

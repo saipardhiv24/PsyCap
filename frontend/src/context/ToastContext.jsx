@@ -52,6 +52,15 @@ export function ToastProvider({ children }) {
 }
 
 function ToastCard({ title, description, tone, onClose }) {
+  const safeTitle =
+    typeof title === "object"
+      ? title?.message || JSON.stringify(title)
+      : String(title || "");
+  const safeDescription =
+    typeof description === "object"
+      ? description?.message || JSON.stringify(description)
+      : String(description || "");
+
   const tones = {
     success: "border-positive/30 bg-card",
     error: "border-negative/30 bg-card",
@@ -77,9 +86,9 @@ function ToastCard({ title, description, tone, onClose }) {
         )}
       </span>
       <div className="flex-1">
-        <p className="text-sm font-semibold text-foreground">{title}</p>
-        {description ? (
-          <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
+        <p className="text-sm font-semibold text-foreground">{safeTitle}</p>
+        {safeDescription ? (
+          <p className="mt-0.5 text-sm text-muted-foreground">{safeDescription}</p>
         ) : null}
       </div>
       <button

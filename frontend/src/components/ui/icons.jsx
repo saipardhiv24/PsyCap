@@ -132,6 +132,8 @@ export const LogoutIcon = (p) => (
   </Svg>
 );
 
+export const LogOutIcon = LogoutIcon;
+
 export const MenuIcon = (p) => (
   <Svg {...p}>
     <path d="M3 6h18M3 12h18M3 18h18" />
@@ -176,5 +178,22 @@ export const ShieldIcon = (p) => (
   <Svg {...p}>
     <path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
     <path d="m9 12 2 2 4-4" />
+  </Svg>
+);
+
+export const BrainIcon = (p) => (
+  <Svg {...p}>
+    <path d="M12 2a5 5 0 0 0-5 5c0 1.5.7 2.8 1.8 3.7C8.3 11.2 8 12.1 8 13v1h8v-1c0-.9-.3-1.8-.8-2.3A5.002 5.002 0 0 0 17 7a5 5 0 0 0-5-5z" />
+    <path d="M9 18h6" />
+    <path d="M10 21h4" />
+  </Svg>
+);
+
+export const AIMentorIcon = BrainIcon;
+
+export const SendIcon = (p) => (
+  <Svg {...p}>
+    <line x1="22" y1="2" x2="11" y2="13" />
+    <polygon points="22 2 15 22 11 13 2 9 22 2" />
   </Svg>
 );

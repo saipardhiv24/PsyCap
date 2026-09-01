@@ -116,6 +116,10 @@ export function DeltaPill({ value, percent, size = "md", className = "" }) {
   );
 }
 
+export function Delta(props) {
+  return <DeltaPill {...props} />;
+}
+
 /* --------------------------------------------------------------- Skeleton */
 
 export function Skeleton({ className = "" }) {

@@ -4,45 +4,45 @@
 
 @layer base {
   :root {
-    /* Light theme — clean, bright fintech */
-    --background: 246 247 249;
+    /* Light theme — crisp, modern cyan/blue fintech */
+    --background: 248 250 252;
     --card: 255 255 255;
     --elevated: 255 255 255;
-    --foreground: 17 24 39;
-    --muted: 240 242 245;
-    --muted-foreground: 100 109 123;
-    --border: 228 231 236;
+    --foreground: 15 23 42;
+    --muted: 241 245 249;
+    --muted-foreground: 100 116 139;
+    --border: 226 232 240;
 
-    --primary: 22 163 74;
+    --primary: 14 165 233;
     --primary-foreground: 255 255 255;
-    --primary-muted: 220 245 229;
+    --primary-muted: 224 242 254;
 
-    --positive: 21 152 74;
-    --positive-muted: 220 245 229;
-    --negative: 220 47 47;
-    --negative-muted: 253 228 228;
+    --positive: 22 163 74;
+    --positive-muted: 220 252 231;
+    --negative: 225 29 72;
+    --negative-muted: 255 228 230;
 
     color-scheme: light;
   }
 
   .dark {
-    /* Dark theme — deep, calm navy */
-    --background: 8 12 20;
-    --card: 17 23 34;
-    --elevated: 24 31 44;
-    --foreground: 232 236 242;
-    --muted: 30 38 52;
-    --muted-foreground: 148 160 178;
-    --border: 32 41 56;
+    /* Premium dark theme — deep obsidian with cyan accents */
+    --background: 7 10 18;
+    --card: 14 20 32;
+    --elevated: 22 30 46;
+    --foreground: 241 245 249;
+    --muted: 26 36 54;
+    --muted-foreground: 148 163 184;
+    --border: 30 41 59;
 
-    --primary: 34 197 94;
-    --primary-foreground: 6 12 8;
-    --primary-muted: 18 46 32;
+    --primary: 56 189 248;
+    --primary-foreground: 3 10 20;
+    --primary-muted: 12 45 72;
 
-    --positive: 45 200 118;
-    --positive-muted: 18 46 32;
-    --negative: 248 113 113;
-    --negative-muted: 55 26 26;
+    --positive: 34 197 94;
+    --positive-muted: 16 46 28;
+    --negative: 244 63 94;
+    --negative-muted: 56 18 26;
 
     color-scheme: dark;
   }
